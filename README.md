@@ -37,4 +37,17 @@ cd mininet
 git tag
 git checkout -b 2.2.1 2.2.1 
 cd ..
-mininet/util/install.sh -a ```
+mininet/util/install.sh -a 
+sudo apt-get install python-termcolor
+sudo apt-get install python-matplotlib
+```
+Install iperf3 for higher granularity throughput measurements
+```
+wget http://downloads.es.net/pub/iperf/iperf-3.0.11.tar.gz
+tar -tvf http://downloads.es.net/pub/iperf/iperf-3.0.11.tar.gz
+cd iperf-3.0.11
+./configure
+make
+sudo make install
+sudo ldconfig /usr/local/lib
+```
