@@ -19,7 +19,9 @@ for qsize in 20 100; do
     # iperf_flows.py script.  Also ensure the plot file names match
     # the required naming convention when submitting your tarball.
     #python plot_tcpprobe.py -f $dir/cwnd.txt -o $dir/cwnd-iperf.png -p $iperf_port
-    grep -a Mbits  $dir/iperf-send.txt | awk '{print $3","$7 }' | awk -F '-' '{print $2}' > $dir/iperf-send2.txt
-    python plot_throughput.py -f $dir/iperf-send2.txt -o $dir/iperf-send.png
+    for i in 0 1 2 3; do
+    	grep -a Mbits  $dir/iperf$i.txt | awk '{print $3","$7 }' | awk -F '-' '{print $2}' > $dir/iperf-csv$i.txt
+    done
+    python plot_throughput.py -f $dir/iperf-csv* -o $dir/iperf-send.png
 
 done

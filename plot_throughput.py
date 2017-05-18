@@ -51,17 +51,22 @@ to_plot=[]
 def get_style(i):
     if i == 0:
         return {'color': 'red'}
+    if i == 1:
+        return {'color': 'blue'}
+    if i == 2:
+        return {'color': 'green'}
     else:
-        return {'color': 'black', 'ls': '-.'}
+        return {'color': 'black'}
 
 m.rc('figure', figsize=(16, 6))
 fig = figure()
 ax = fig.add_subplot(111)
+time_btwn_flows = 2.0
 for i, f in enumerate(args.files):
     data = read_list(f)
     xaxis = map(float, col(0, data))
     throughput = map(float, col(1, data))
-    xaxis = xaxis[::args.every]
+    xaxis = map(lambda x: x + time_btwn_flows * i, xaxis[::args.every])
     throughput[::args.every]
     print throughput
     ax.plot(xaxis, throughput, label=args.legend[i], lw=2, **get_style(i))

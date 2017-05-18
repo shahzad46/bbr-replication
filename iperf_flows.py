@@ -99,18 +99,22 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor.start()
     return monitor
 
-def start_iperf(net):
+def start_iperf(net, n_iperf_flows, time_btwn_flows):
     h1 = net.get('h1')
     h2 = net.get('h2')
     print "Starting iperf server..."
     # For those who are curious about the -w 16m parameter, it ensures
     # that the TCP flow is not receiver window limited.  If it is,
     # there is a chance that the router buffer may not get filled up.
-    command = "iperf3 -s -p 1234 -f m -i 0.1 -1 "
-    server = h2.popen(command, shell=True)
-    client_command = "iperf3 -c {} -w 16m -i 0.25 -p 1234 {} -t {}".format(h2.IP(), args.cong, args.time)
-    client_command = client_command + " > {}/iperf-send.txt".format(args.dir)
-    client = h1.popen(client_command, shell=True)
+    base_port = 1234
+    for i in range(n_iperf_flows):
+        command = "iperf3 -s -p {} -f m -i 0.25 -1 ".format(base_port + i)
+        server = h2.popen(command, shell=True)
+        client_command = "iperf3 -c {} -f m -w 16m -i 0.5 -p {} {} -t {}".format(\
+                h2.IP(), base_port + i, args.cong, args.time - time_btwn_flows * i)
+        client_command = client_command + " > {}/iperf{}.txt".format(args.dir, i)
+        client = h1.popen(client_command, shell=True)
+        sleep(time_btwn_flows)
 
 def bufferbloat():
     if not os.path.exists(args.dir):
@@ -126,11 +130,14 @@ def bufferbloat():
     net.pingAll()
 
     # Start the iperf flows.
-    start_iperf(net)
+
+    n_iperf_flows = 4;
+    time_btwn_flows = 2;
+    start_iperf(net, n_iperf_flows, time_btwn_flows)
 
     # Print time left to show user how long they have to wait.
     start_time = time()
-    args.time += 5
+    args.time += n_iperf_flows * time_btwn_flows + 5
     while True:
         sleep(5)
         now = time()
