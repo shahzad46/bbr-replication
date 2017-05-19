@@ -51,3 +51,9 @@ make
 sudo make install
 sudo ldconfig /usr/local/lib
 ```
+
+Install iproute2 v4.9 to view BBR parameters with `ss`
+```
+wget http://launchpadlibrarian.net/306560390/iproute2_4.9.0-1ubuntu1_amd64.deb
+sudo dpkg -i iproute2_4.9.0-1ubuntu1_amd64.deb
+```
