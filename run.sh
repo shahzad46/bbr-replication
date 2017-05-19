@@ -6,11 +6,11 @@
 time=60
 bwnet=100
 # For RTT 20ms
-delay=5
+delay=10
 
 iperf_port=5001
 
-for qsize in 20 100; do
+for qsize in 125; do
     dir=bb-q$qsize
     rm $dir/*
     python iperf_flows.py --time $time --bw-net $bwnet --delay $delay --dir $dir --bw-host 1000 --maxq $qsize

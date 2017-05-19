@@ -22,8 +22,8 @@ def monitor_qlen(iface, interval_sec = 0.01, fname='%s/qlen.txt' % default_dir, 
             t = "%f" % time()
             open(fname, 'a').write(t + ',' + matches[1] + '\n')
         sleep(interval_sec)
-    #open('qlen.txt', 'w').write('\n'.join(ret))
     return
+
 
 def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=0.01):
     """Uses bwm-ng tool to collect iface tx rate stats.  Very reliable."""
@@ -31,3 +31,35 @@ def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=0.01):
            "-u bits -T rate -C ',' > %s" %
            (interval_sec * 1000, fname))
     Popen(cmd, shell=True).wait()
+
+
+def monitor_bbr(dst, interval_sec = 0.01, fname='%s/bbr.txt' % default_dir, host=None):
+    cmd = "ss -iet dst %s" % (dst)
+    runner = Popen if host is None else host.popen
+    print dst
+    ret = []
+    open(fname, 'w').write('')
+    while 1:
+        p = runner(cmd, shell=True, stdout=PIPE)
+        output = p.stdout.read()
+        try:
+            start = output.find("bbr:(")
+            end = output.find(")", start)
+            if start == -1 or end == -1:
+                continue
+            data_elems = output[start+5:end].split(",")
+            data = {}
+            for d in data_elems:
+                k, v = d.split(":")
+                data[k] = v
+            csvformat = "%s, %s, %s, %s" % (
+                data["bw"],
+                data["mrtt"],
+                data["pacing_gain"],
+                data["cwnd_gain"]
+            )
+            open(fname, 'a').write(csvformat + "\n")
+        except Exception:
+            pass
+        sleep(interval_sec)
+    return

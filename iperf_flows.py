@@ -1,5 +1,4 @@
 #!/usr/bin/python
-"CS244 Spring 2015 Assignment 1: Bufferbloat"
 
 from mininet.topo import Topo
 from mininet.node import CPULimitedHost
@@ -16,18 +15,14 @@ from time import sleep, time
 from multiprocessing import Process
 from argparse import ArgumentParser
 
-from monitor import monitor_qlen
+from monitor import monitor_qlen, monitor_bbr
 import termcolor as T
 
 import sys
 import os
 import math
 
-# TODO: Don't just read the TODO sections in this code.  Remember that
-# one of the goals of this assignment is for you to learn how to use
-# Mininet. :-)
-
-parser = ArgumentParser(description="Bufferbloat tests")
+parser = ArgumentParser(description="BBR Replication")
 parser.add_argument('--bw-host', '-B',
                     type=float,
                     help="Bandwidth of host links (Mb/s)",
@@ -57,10 +52,7 @@ parser.add_argument('--maxq',
                     help="Max buffer size of network interface in packets",
                     default=100)
 
-# Linux uses CUBIC-TCP by default that doesn't have the usual sawtooth
-# behaviour.  For those who are curious, invoke this script with
-# --cong cubic and see what happens...
-# sysctl -a | grep cong should list some interesting parameters.
+# Linux uses CUBIC-TCP by default.
 parser.add_argument('--cong',
                     help="Congestion control algorithm to use",
                     default="bbr")
@@ -69,22 +61,19 @@ parser.add_argument('--cong',
 args = parser.parse_args()
 
 class BBTopo(Topo):
-    "Simple topology for bufferbloat experiment."
+    "Simple topology for bbr experiments."
 
     def build(self, n=2):
         host1 = self.addHost('h1')
         host2 = self.addHost('h2')
         switch = self.addSwitch('s0')
-        link1 = self.addLink(host1, switch, bw=args.bw_host,
-                             delay=str(args.delay) + 'ms')
+        link1 = self.addLink(host1, switch)
         link2 = self.addLink(host2, switch, bw=args.bw_net,
                              delay=str(args.delay) + 'ms',
                              max_queue_size=args.maxq)
         return
 
-# Simple wrappers around monitoring utilities.  You are welcome to
-# contribute neatly written (using classes) monitoring scripts for
-# Mininet!
+# Simple wrappers around monitoring utilities.
 def start_tcpprobe(outfile="cwnd.txt"):
     os.system("rmmod tcp_probe; modprobe tcp_probe full=1;")
     Popen("cat /proc/net/tcpprobe > %s/%s" % (args.dir, outfile),
@@ -99,41 +88,72 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor.start()
     return monitor
 
-def start_iperf(net, n_iperf_flows, time_btwn_flows):
+def start_bbrmon(dst, interval_sec=0.1, outfile="bbr.txt", host=None):
+    monitor = Process(target=monitor_bbr,
+                      args=(dst, interval_sec, outfile, host))
+    monitor.start()
+    return monitor
+
+def iperf_bbr_mon(net, i, port):
+    mon = start_bbrmon("%s:%s" % (net.get('h2').IP(), port),
+                 outfile= "%s/bbr%s.txt" %(args.dir, i), host=net.get('h1'))
+    return mon
+
+def start_iperf(net, n_iperf_flows, time_btwn_flows, action=None):
     h1 = net.get('h1')
     h2 = net.get('h2')
     print "Starting iperf server..."
+    result = []
     # For those who are curious about the -w 16m parameter, it ensures
     # that the TCP flow is not receiver window limited.  If it is,
     # there is a chance that the router buffer may not get filled up.
     base_port = 1234
     for i in range(n_iperf_flows):
-        command = "iperf3 -s -p {} -f m -i 0.25 -1 ".format(base_port + i)
+        command = "iperf3 -s -p {} -f m -i 1 -1 ".format(base_port + i)
         server = h2.popen(command, shell=True)
-        client_command = "iperf3 -c {} -f m -w 16m -i 0.5 -p {} {} -t {}".format(\
+        client_command = "iperf3 -c {} -f m -w 16m -i 1 -p {} -C {} -t {}".format(\
                 h2.IP(), base_port + i, args.cong, args.time - time_btwn_flows * i)
         client_command = client_command + " > {}/iperf{}.txt".format(args.dir, i)
         client = h1.popen(client_command, shell=True)
+        if action:
+            result.append(action(net, i, base_port + i))
         sleep(time_btwn_flows)
+    return result
 
-def bufferbloat():
+def run(action):
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % args.cong)
     topo = BBTopo()
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
     net.start()
+
     # This dumps the topology and how nodes are interconnected through
     # links.
     dumpNodeConnections(net.hosts)
     # This performs a basic all pairs ping test.
     net.pingAll()
 
-    # Start the iperf flows.
+    if action:
+        action(net)
 
-    n_iperf_flows = 4;
-    time_btwn_flows = 2;
-    start_iperf(net, n_iperf_flows, time_btwn_flows)
+    # Hint: The command below invokes a CLI which you can use to
+    # debug.  It allows you to run arbitrary commands inside your
+    # emulated hosts h1 and h2.
+    # CLI(net)
+
+    net.stop()
+
+
+def figure6(net):
+    """ """
+    # use fair queueing with rate 100Mbits
+    os.system("tc qdisc add dev s0-eth1 root handle 5:0 fq maxrate 100mbit pacing")
+
+    # Start the iperf flows.
+    n_iperf_flows = 4
+    time_btwn_flows = 2
+    mons = start_iperf(net, n_iperf_flows, time_btwn_flows, action=iperf_bbr_mon)
 
     # Print time left to show user how long they have to wait.
     start_time = time()
@@ -146,15 +166,9 @@ def bufferbloat():
             break
         print "%.1fs left..." % (args.time - delta)
 
-    # Hint: The command below invokes a CLI which you can use to
-    # debug.  It allows you to run arbitrary commands inside your
-    # emulated hosts h1 and h2.
-    # CLI(net)
+    for mon in mons:
+        mon.terminate()
 
-    net.stop()
-    # Ensure that all processes you create within Mininet are killed.
-    # Sometimes they require manual killing.
-    Popen("pgrep -f webserver.py | xargs kill -9", shell=True).wait()
 
 if __name__ == "__main__":
-    bufferbloat()
+    run(figure6)
