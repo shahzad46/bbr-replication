@@ -32,10 +32,10 @@ cat /proc/sys/net/ipv4/tcp_congestion_control
 ```
 
 Install Mininet from Source 
-```git clone git://github.com/mininet/mininet 
+```
+git clone git://github.com/mininet/mininet 
 cd mininet
 git tag
-git checkout -b 2.2.1 2.2.1 
 cd ..
 mininet/util/install.sh -a 
 sudo apt-get install python-termcolor
