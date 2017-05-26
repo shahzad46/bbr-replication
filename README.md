@@ -44,7 +44,7 @@ sudo apt-get install python-matplotlib
 Install iperf3 for higher granularity throughput measurements
 ```
 wget http://downloads.es.net/pub/iperf/iperf-3.0.11.tar.gz
-tar -tvf iperf-3.0.11.tar.gz
+tar -xvf iperf-3.0.11.tar.gz
 cd iperf-3.0.11
 ./configure
 make
