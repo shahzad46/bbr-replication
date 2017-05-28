@@ -57,6 +57,11 @@ parser.add_argument('--cong',
                     help="Congestion control algorithm to use",
                     default="bbr")
 
+parser.add_argument('--fig_num',
+                    type=int,
+                    help="Figure to replicate. Valid options are 5 or 6",
+                    default=6)
+
 # Expt parameters
 args = parser.parse_args()
 
@@ -99,26 +104,40 @@ def iperf_bbr_mon(net, i, port):
                  outfile= "%s/bbr%s.txt" %(args.dir, i), host=net.get('h1'))
     return mon
 
-def start_iperf(net, n_iperf_flows, time_btwn_flows, action=None):
+# Starts n iperf flows between h1 and h2, waiting the specified time between
+# starting consecutive flows.
+def start_n_iperfs(net, n_iperf_flows, time_btwn_flows, action=None):
     h1 = net.get('h1')
     h2 = net.get('h2')
-    print "Starting iperf server..."
+    print "Starting iperf flows..."
     result = []
-    # For those who are curious about the -w 16m parameter, it ensures
-    # that the TCP flow is not receiver window limited.  If it is,
-    # there is a chance that the router buffer may not get filled up.
     base_port = 1234
     for i in range(n_iperf_flows):
-        command = "iperf3 -s -p {} -f m -i 1 -1 ".format(base_port + i)
-        server = h2.popen(command, shell=True)
-        client_command = "iperf3 -c {} -f m -w 16m -i 1 -p {} -C {} -t {}".format(\
-                h2.IP(), base_port + i, args.cong, args.time - time_btwn_flows * i)
-        client_command = client_command + " > {}/iperf{}.txt".format(args.dir, i)
-        client = h1.popen(client_command, shell=True)
+        start_one_iperf(h1, h2, args.cong, args.time - time_btwn_flows * i,\
+                base_port + i, "{}/iperf{}.txt".format(args.dir, i))
         if action:
             result.append(action(net, i, base_port + i))
         sleep(time_btwn_flows)
     return result
+
+# Start a ping train between h1 and h2 lasting for the given time. Send the
+# output to the given fname.
+def start_ping(net, time, fname):
+    h1 = net.get('h1')
+    h2 = net.get('h2')
+    command = "ping -i 0.1 -c {} {} > {}/{}".format(time*10, h2.IP(),\
+            args.dir, fname)
+    h1.popen(command, shell=True)
+
+# Start a single iperf flow between h1 and h2 with the given congestion alg,
+# length of time and port number. Write the output to the specified file.
+def start_one_iperf(h1, h2, cong, length, port, fname):
+    command = "iperf3 -s -p {} -f m -i 1 -1 ".format(port)
+    server = h2.popen(command, shell=True)
+    client_command = "iperf3 -c {} -f m -w 16m -i 1 -p {} -C {} -t {}".format(\
+            h2.IP(), port, cong, length)
+    client_command = client_command + " > {}".format(fname)
+    client = h1.popen(client_command, shell=True)
 
 def run(action):
     if not os.path.exists(args.dir):
@@ -144,6 +163,36 @@ def run(action):
 
     net.stop()
 
+# Display a countdown to the user to show time remaining.
+def display_countdown(nseconds):
+    start_time = time()
+    while True:
+        sleep(5)
+        now = time()
+        delta = now - start_time
+        if delta > nseconds:
+            break
+        print "%.1fs left..." % (nseconds - delta)
+
+def figure5(net):
+    """ """
+    # use fair queueing with rate 10Mbits
+    os.system("tc qdisc add dev s0-eth1 root handle 5:0 fq maxrate 10mbit pacing")
+    h1 = net.get('h1')
+    h2 = net.get('h2')
+    # Start the iperf flows.
+    start_ping(net, args.time+2, "bbr_rtt.txt")
+    sleep(2)
+    start_one_iperf(h1, h2, "bbr", args.time, 2222, "bbr_iperf.txt")
+    print "tracking rtt for bbr flow"
+    display_countdown(args.time+5)
+
+    start_ping(net, args.time+2, "cubic_rtt.txt")
+    sleep(2)
+    start_one_iperf(h1, h2, "cubic", args.time, 2222, "cubic_iperf.txt")
+    print "tracking rtt for cubic flow"
+    display_countdown(args.time+5)
+
 
 def figure6(net):
     """ """
@@ -153,22 +202,21 @@ def figure6(net):
     # Start the iperf flows.
     n_iperf_flows = 4
     time_btwn_flows = 2
-    mons = start_iperf(net, n_iperf_flows, time_btwn_flows, action=iperf_bbr_mon)
+    mons = start_n_iperfs(net, n_iperf_flows, time_btwn_flows, action=iperf_bbr_mon)
 
     # Print time left to show user how long they have to wait.
     start_time = time()
     args.time += n_iperf_flows * time_btwn_flows + 5
-    while True:
-        sleep(5)
-        now = time()
-        delta = now - start_time
-        if delta > args.time:
-            break
-        print "%.1fs left..." % (args.time - delta)
+    display_countdown(args.time)
 
     for mon in mons:
         mon.terminate()
 
 
 if __name__ == "__main__":
-    run(figure6)
+    if args.fig_num == 5:
+        run(figure5)
+    elif args.fig_num == 6:
+        run(figure6)
+    else:
+        print "Error: please enter a valid figure number: 5 or 6"

@@ -75,6 +75,7 @@ for i, f in enumerate(args.files):
 plt.ylabel("Throughput (Mbits)")
 plt.grid(True)
 plt.xlabel("Seconds")
+plt.tight_layout()
 
 if args.out:
     print 'saving to', args.out
