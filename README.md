@@ -32,10 +32,10 @@ cat /proc/sys/net/ipv4/tcp_congestion_control
 ```
 
 Install Mininet from Source 
-```git clone git://github.com/mininet/mininet 
+```
+git clone git://github.com/mininet/mininet 
 cd mininet
 git tag
-git checkout -b 2.2.1 2.2.1 
 cd ..
 mininet/util/install.sh -a 
 sudo apt-get install python-termcolor
@@ -44,7 +44,7 @@ sudo apt-get install python-matplotlib
 Install iperf3 for higher granularity throughput measurements
 ```
 wget http://downloads.es.net/pub/iperf/iperf-3.0.11.tar.gz
-tar -tvf http://downloads.es.net/pub/iperf/iperf-3.0.11.tar.gz
+tar -xvf iperf-3.0.11.tar.gz
 cd iperf-3.0.11
 ./configure
 make
