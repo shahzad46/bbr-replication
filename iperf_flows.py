@@ -181,14 +181,12 @@ def figure5(net):
     h1 = net.get('h1')
     h2 = net.get('h2')
     # Start the iperf flows.
-    start_ping(net, args.time+2, "bbr_rtt.txt")
-    sleep(2)
+    start_ping(net, args.time, "bbr_rtt.txt")
     start_one_iperf(h1, h2, "bbr", args.time, 2222, "bbr_iperf.txt")
     print "tracking rtt for bbr flow"
     display_countdown(args.time+5)
 
-    start_ping(net, args.time+2, "cubic_rtt.txt")
-    sleep(2)
+    start_ping(net, args.time, "cubic_rtt.txt")
     start_one_iperf(h1, h2, "cubic", args.time, 2222, "cubic_iperf.txt")
     print "tracking rtt for cubic flow"
     display_countdown(args.time+5)

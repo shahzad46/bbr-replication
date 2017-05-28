@@ -10,7 +10,7 @@ delay=10
 
 iperf_port=5001
 
-for qsize in 125; do
+for qsize in 80; do
     dir=figure5
     rm $dir/*
     python iperf_flows.py --time $time --bw-net $bwnet --delay $delay --dir $dir --bw-host 1000 --maxq $qsize --fig_num 5
