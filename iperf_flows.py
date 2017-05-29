@@ -125,7 +125,7 @@ def start_n_iperfs(net, n_iperf_flows, time_btwn_flows, action=None):
 def start_ping(net, time, fname):
     h1 = net.get('h1')
     h2 = net.get('h2')
-    command = "ping -i 0.1 -c {} {} > {}/{}".format(time*10, h2.IP(),\
+    command = "ping -i 1 -c {} {} > {}/{}".format(time*10, h2.IP(),\
             args.dir, fname)
     h1.popen(command, shell=True)
 
@@ -134,7 +134,7 @@ def start_ping(net, time, fname):
 def start_one_iperf(h1, h2, cong, length, port, fname):
     command = "iperf3 -s -p {} -f m -i 1 -1 ".format(port)
     server = h2.popen(command, shell=True)
-    client_command = "iperf3 -c {} -f m -w 16m -i 1 -p {} -C {} -t {}".format(\
+    client_command = "iperf3 -c {} -f m -w 16m -i 0.1 -p {} -C {} -t {}".format(\
             h2.IP(), port, cong, length)
     client_command = client_command + " > {}".format(fname)
     client = h1.popen(client_command, shell=True)
@@ -177,7 +177,7 @@ def display_countdown(nseconds):
 def figure5(net):
     """ """
     # use fair queueing with rate 10Mbits
-    os.system("tc qdisc add dev s0-eth1 root handle 5:0 fq maxrate 10mbit pacing")
+    #os.system("tc qdisc add dev s0-eth1 root handle 5:0 fq maxrate 10mbit pacing")
     h1 = net.get('h1')
     h2 = net.get('h2')
     # Start the iperf flows.

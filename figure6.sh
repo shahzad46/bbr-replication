@@ -3,7 +3,7 @@
 # Note: Mininet must be run as root.  So invoke this shell script
 # using sudo.
 
-time=60
+time=80
 bwnet=100
 # For RTT 20ms
 delay=10
