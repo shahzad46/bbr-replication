@@ -6,8 +6,11 @@
 sudo apt-get update
 sudo apt-get build-dep linux
 sudo apt-get upgrade
+
+#download and install modified linux kernel
 cd /usr/src && sudo chmod 1777 .
 git clone https://github.com/sammyas/linux-stable
+cd /usr/src/linux-stable
 wget  https://raw.githubusercontent.com/google/bbr/master/Documentation/config.gce
 mv config.gce .config
 make olddefconfig
