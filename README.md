@@ -1,11 +1,13 @@
 # Setup
 
 Modified from https://github.com/google/bbr/blob/master/Documentation/bbr-quick-start.md
+
 Create a new GCE project and a new VM Instance
 
 ```
-typeset -x PROJECT="bbr-replication"  # An existing GCE project name
-typeset -x ZONE="us-west1-a"          # Any GCE Zone
+gcloud projects create [EXAMPLE_PROJECT_NAME]
+typeset -x PROJECT=[EXAMPLE_PROJECT_NAME]
+typeset -x ZONE="us-west1-a"
 gcloud compute instances create "bbrtest1" \
     --project ${PROJECT} \
     --zone ${ZONE} \
@@ -33,6 +35,7 @@ sudo ./install1.sh
 
 Finish Installations:
 ```
+# Wait ~10 seconds for the vm to finish rebooting
 gcloud compute ssh --project ${PROJECT} --zone ${ZONE} bbrtest1
 cd bbr-replication
 sudo ./install2.sh
