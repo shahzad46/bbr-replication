@@ -221,7 +221,7 @@ def netperf_commands(index, h1, h2, port, cong, duration, outdir):
     # -l [seconds]: duration
     # -P [port]: port of data flow
     client = "netperf -H {} -p 5555 -l {} -- -P {} > {}".format(
-        dst['IP'], duration, port,
+        h2['IP'], duration, port,
         "{}/netperf{}.txt".format(outdir, index)
     )
     h1['runner'](client, shell=True)
