@@ -18,3 +18,12 @@ sudo ldconfig /usr/local/lib
 
 wget http://launchpadlibrarian.net/306560390/iproute2_4.9.0-1ubuntu1_amd64.deb
 sudo dpkg -i iproute2_4.9.0-1ubuntu1_amd64.deb
+
+sudo apt-get install tcptrace
+sudo apt-get install unzip
+wget https://github.com/hgn/captcp/archive/master.zip
+unzip master.zip
+cd captcp-master
+sudo make install
+sudo apt-get install python-pip
+pip install dpkt
