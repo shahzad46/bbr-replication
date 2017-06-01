@@ -82,11 +82,17 @@ class BBTopo(Topo):
 
 
 def build_topology(emulator):
-    def log_wrap(fn):
-        def new_fn(command, *args, **kwargs):
-            print command
-            return fn(command, *args, **kwargs)
-        return new_fn
+    def runner(popen):
+        def run_fn(command, background=False, daemon=True):
+            def start_command():
+                popen(command, shell=True).wait()
+            proc = Process(target=start_command)
+            proc.daemon = daemon
+            proc.start()
+            if not background:
+                proc.join()
+            return proc
+        return run_fn
 
     if emulator == 'mininet':
         topo = BBTopo()
@@ -102,47 +108,46 @@ def build_topology(emulator):
         # use fair queueing with rate 100Mbits
         # os.system("tc qdisc add dev s0-eth1 root handle 5:0 fq maxrate 100mbit pacing")
 
-        return {
+        data = {
             'type': 'mininet',
             'h1': {
                 'IP': net.get('h1').IP(),
-                'runner': net.get('h2').popen
+                'popen': net.get('h2').popen,
             },
             'h2': {
                 'IP': net.get('h2').IP(),
-                'runner': net.get('h2').popen
+                'popen': net.get('h2').popen
             },
             'obj': net,
             'cleanupfn': net.stop
         }
     else:
-        def ssh_runner(command, *args, **kwargs):
+        def ssh_popen(command, *args, **kwargs):
             user = os.environ.get('SUDO_USER', os.environ['USER'])
             full_command = "ssh -i /home/{}/.ssh/id_rsa {}@{} '{} {}'".format(
                 user, user, data['h2']['IP'], 'sudo bash -c',
                 json.dumps(command)
             )
             print full_command
-            def run_command():
-                return Popen(full_command, shell=True)
-            proc = Process(target=run_command)
-            proc.daemon = True
-            proc.start()
-            return proc
+            kwargs['shell'] = True
+            return Popen(full_command, *args, **kwargs)
 
         data = {
             'type': 'emulator',
             'h1': {
                 'IP': '10.138.0.2',
-                'runner': Popen
+                'popen': Popen,
             },
             'h2': {
                 'IP': '10.138.0.3',
-                'runner': ssh_runner
+                'popen': ssh_popen
             },
             'obj': None
         }
-        return data
+    data['h1']['runner'] = runner(data['h1']['popen'])
+    data['h2']['runner'] = runner(data['h2']['popen'])
+
+    return data
 
 
 # Simple wrappers around monitoring utilities.
@@ -173,7 +178,7 @@ def start_bbrmon(dst, interval_sec=0.1, outfile="bbr.txt", runner=None):
 def iperf_bbr_mon(net, i, port):
     mon = start_bbrmon("%s:%s" % (net['h2']['IP'], port),
                        outfile="%s/bbr%s.txt" %(args.dir, i),
-                       runner=net['h1']['runner'])
+                       runner=net['h1']['popen'])
     return mon
 
 
@@ -192,8 +197,8 @@ def filter_capture(filt, infile="capture.dmp", outfile="filtered.dmp"):
 
 
 def iperf_setup(h1, h2, ports):
-    h2['runner']("killall iperf3", shell=True).join()
-    sleep(1)
+    h2['runner']("killall iperf3")
+    sleep(1) # make sure ports can be reused
     for port in ports:
         # -s: server
         # -p [port]: port
@@ -201,8 +206,8 @@ def iperf_setup(h1, h2, ports):
         # -i 1: measure every second
         # -1: one-off (one connection then exit)
         cmd = "iperf3 -s -p {} -f m -i 1 -1".format(port)
-        h2['runner'](cmd, shell=True)
-    sleep(min(10, len(ports))) # make sure server starts
+        h2['runner'](cmd, background=True)
+    sleep(min(10, len(ports))) # make sure all the servers start
 
 def iperf_commands(index, h1, h2, port, cong, duration, outdir):
     # -c [ip]: remote host
@@ -212,7 +217,7 @@ def iperf_commands(index, h1, h2, port, cong, duration, outdir):
     client = "iperf3 -c {} -f m -w 16m -i 1 -p {} -C {} -t {} > {}".format(
         h2['IP'], port, cong, duration, "{}/iperf{}.txt".format(outdir, index)
     )
-    h1['runner'](client, shell=True)
+    h1['runner'](client, background=True)
 
 
 def netperf_commands(index, h1, h2, port, cong, duration, outdir):
@@ -224,14 +229,14 @@ def netperf_commands(index, h1, h2, port, cong, duration, outdir):
         h2['IP'], duration, port,
         "{}/netperf{}.txt".format(outdir, index)
     )
-    h1['runner'](client, shell=True)
+    h1['runner'](client, background=True)
 
 
 def netperf_setup(h1, h2, cong):
     client = "sysctl -w net.ipv4.tcp_congestion_control={}".format(cong)
     server = "killall netserver; netserver -p 5555"
-    h1['runner'](client, shell=True)
-    h2['runner'](server, shell=True).join()
+    h1['runner'](client)
+    h2['runner'](server)
 
 
 def start_flows(net, num_flows, time_btwn_flows, flow_type,
