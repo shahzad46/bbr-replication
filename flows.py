@@ -19,6 +19,7 @@ from monitor import monitor_qlen, monitor_bbr, capture_packets
 import termcolor as T
 
 import json
+import sched
 import sys
 import os
 import math
@@ -59,6 +60,11 @@ parser.add_argument('--flow-type',
 parser.add_argument('--environment',
                     default="vms")
 
+# may want to set for mininet
+parser.add_argument('--no-capture',
+                    action='store_true',
+                    default=False)
+
 # Linux uses CUBIC-TCP by default.
 parser.add_argument('--cong',
                     help="Congestion control algorithm to use",
@@ -76,14 +82,17 @@ class BBTopo(Topo):
         switch = self.addSwitch('s0')
         link1 = self.addLink(host1, switch)
         link2 = self.addLink(host2, switch, bw=args.bw_net,
-                             delay=str(args.delay) + 'ms',
-                             max_queue_size=args.maxq)
+                             delay=args.delay, max_queue_size=args.maxq)
         return
 
 
 def build_topology(emulator):
-    def runner(popen):
+    def runner(popen, noproc=False):
         def run_fn(command, background=False, daemon=True):
+            if noproc:
+                p = popen(command, shell=True)
+                if not background:
+                    return p.wait()
             def start_command():
                 popen(command, shell=True).wait()
             proc = Process(target=start_command)
@@ -99,20 +108,14 @@ def build_topology(emulator):
         net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
         net.start()
 
-        # This dumps the topology and how nodes are interconnected through
-        # links.
         dumpNodeConnections(net.hosts)
-        # This performs a basic all pairs ping test.
         net.pingAll()
-
-        # use fair queueing with rate 100Mbits
-        # os.system("tc qdisc add dev s0-eth1 root handle 5:0 fq maxrate 100mbit pacing")
 
         data = {
             'type': 'mininet',
             'h1': {
                 'IP': net.get('h1').IP(),
-                'popen': net.get('h2').popen,
+                'popen': net.get('h1').popen,
             },
             'h2': {
                 'IP': net.get('h2').IP(),
@@ -144,8 +147,8 @@ def build_topology(emulator):
             },
             'obj': None
         }
-    data['h1']['runner'] = runner(data['h1']['popen'])
-    data['h2']['runner'] = runner(data['h2']['popen'])
+    data['h1']['runner'] = runner(data['h1']['popen'], noproc=False)
+    data['h2']['runner'] = runner(data['h2']['popen'], noproc=False)
 
     return data
 
@@ -255,7 +258,7 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type,
         iperf_setup(h1, h2, [base_port + i for i in range(num_flows)])
         flow_commands = iperf_commands
 
-    for i in range(num_flows):
+    def start_flow(i):
         flow_commands(i, h1, h2, base_port + i, args.cong,
                       args.time - time_btwn_flows * i,
                       args.dir)
@@ -268,7 +271,10 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type,
         if flow_monitor:
             flow['monitor'] = flow_monitor(net, i, base_port + i)
         flows.append(flow)
-        sleep(time_btwn_flows)
+    s = sched.scheduler(time, sleep)
+    for i in range(num_flows):
+        s.enter(i * time_btwn_flows, 1, start_flow, [i])
+    s.run()
     return flows
 
 
@@ -286,15 +292,16 @@ def run(action):
     # emulated hosts h1 and h2.
     # CLI(net['obj'])
 
-    if net['obj'] is not None and net['obj']['cleanupfn']:
-        net['obj']['cleanupfn']()
+    if net['obj'] is not None and net['cleanupfn']:
+        net['cleanupfn']()
 
 
 def figure6(net):
     """ """
 
     # Start packet capturing
-    cap = start_capture("{}/capture.dmp".format(args.dir))
+    if not args.no_capture:
+        cap = start_capture("{}/capture.dmp".format(args.dir))
 
     # Start the iperf flows.
     n_iperf_flows = 5
@@ -313,11 +320,13 @@ def figure6(net):
             break
         print "%.1fs left..." % (args.time - delta)
 
-    Popen("killall tcpdump", shell=True)
-    cap.join()
+
+    if not args.no_capture:
+        Popen("killall tcpdump", shell=True)
+        cap.join()
 
     for flow in flows:
-        if flow['filter']:
+        if flow['filter'] and not args.no_capture:
             print "Filtering flow {}...".format(flow['index'])
             filter_capture(flow['filter'],
                            "{}/capture.dmp".format(args.dir),
