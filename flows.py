@@ -123,7 +123,12 @@ def build_topology(emulator):
                 json.dumps(command)
             )
             print full_command
-            return Popen(command, shell=True)
+            def run_command():
+                return Popen(full_command, shell=True)
+            proc = Process(target=run_command)
+            proc.daemon = True
+            proc.start()
+            return proc
 
         data = {
             'type': 'emulator',
@@ -186,26 +191,31 @@ def filter_capture(filt, infile="capture.dmp", outfile="filtered.dmp"):
     return monitor
 
 
-def iperf_commands(index, src, dst, port, cong, duration, outdir):
-    # -s: server
-    # -p [port]: port
-    # -f m: format in megabits
-    # -i 1: measure every second
-    # -1: one-off (one connection then exit)
-    server = "iperf3 -s -p {} -f m -i 1 -1 ".format(port)
+def iperf_setup(h1, h2, ports):
+    h2['runner']("killall iperf3", shell=True).join()
+    sleep(1)
+    for port in ports:
+        # -s: server
+        # -p [port]: port
+        # -f m: format in megabits
+        # -i 1: measure every second
+        # -1: one-off (one connection then exit)
+        cmd = "iperf3 -s -p {} -f m -i 1 -1".format(port)
+        h2['runner'](cmd, shell=True)
+    sleep(min(10, len(ports))) # make sure server starts
 
+def iperf_commands(index, h1, h2, port, cong, duration, outdir):
     # -c [ip]: remote host
     # -w 16m: window size
     # -C: congestion control
     # -t [seconds]: duration
     client = "iperf3 -c {} -f m -w 16m -i 1 -p {} -C {} -t {} > {}".format(
-        dst['IP'], port, cong, duration, "{}/iperf{}.txt".format(outdir, index)
+        h2['IP'], port, cong, duration, "{}/iperf{}.txt".format(outdir, index)
     )
+    h1['runner'](client, shell=True)
 
-    return client, server
 
-
-def netperf_commands(index, src, dst, port, cong, duration, outdir):
+def netperf_commands(index, h1, h2, port, cong, duration, outdir):
     # -H [ip]: remote host
     # -p [port]: port of netserver
     # -l [seconds]: duration
@@ -214,14 +224,14 @@ def netperf_commands(index, src, dst, port, cong, duration, outdir):
         dst['IP'], duration, port,
         "{}/netperf{}.txt".format(outdir, index)
     )
-    server = ""
-    return client, server
+    h1['runner'](client, shell=True)
 
 
-def netperf_setup(cong):
+def netperf_setup(h1, h2, cong):
     client = "sysctl -w net.ipv4.tcp_congestion_control={}".format(cong)
     server = "killall netserver; netserver -p 5555"
-    return client, server
+    h1['runner'](client, shell=True)
+    h2['runner'](server, shell=True).join()
 
 
 def start_flows(net, num_flows, time_btwn_flows, flow_type,
@@ -234,23 +244,16 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type,
     base_port = 1234
 
     if flow_type == 'netperf':
-        client, server = netperf_setup(args.cong)
-        if client:
-            client = h1['runner'](client, shell=True)
-        if server:
-            server = h2['runner'](server, shell=True)        
+        netperf_setup(h1, h2, args.cong)
         flow_commands = netperf_commands
     else:
+        iperf_setup(h1, h2, [base_port + i for i in range(num_flows)])
         flow_commands = iperf_commands
 
     for i in range(num_flows):
-        client, server = flow_commands(i, h1, h2, base_port + i, args.cong,
-                                       args.time - time_btwn_flows * i,
-                                       args.dir)
-        if client:
-            client = h1['runner'](client, shell=True)
-        if server:
-            server = h2['runner'](server, shell=True)
+        flow_commands(i, h1, h2, base_port + i, args.cong,
+                      args.time - time_btwn_flows * i,
+                      args.dir)
         flow = {
             'index': i,
             'filter': 'src {} and dst {} and dst port {}'.format(h1['IP'], h2['IP'],
