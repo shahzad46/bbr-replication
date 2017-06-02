@@ -34,7 +34,7 @@ def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=0.01):
 
 
 def capture_packets(options="", fname='%s/capture.dmp' % default_dir, runner=None):
-    cmd = "tcpdump -i any -w {} {}".format(fname, options)
+    cmd = "tcpdump -w {} {}".format(fname, options)
     print cmd
     runner = Popen if runner is None else runner
     return runner(cmd, shell=True).wait()
