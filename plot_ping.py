@@ -30,12 +30,8 @@ def parse_ping(fname):
     lines = open(fname).readlines()
     num = 0
     for line in lines:
-        if 'bytes from' not in line:
-            continue
         try:
-            rtt = line.split(' ')[-2]
-            rtt = rtt.split('=')[1]
-            rtt = float(rtt)
+            rtt = float(line) * 1000
             ret.append([num, rtt])
             num += 1
         except:
@@ -47,15 +43,15 @@ fig = figure()
 ax = fig.add_subplot(111)
 for i, f in enumerate(args.files):
     data = parse_ping(f)
-    xaxis = map(float, col(0, data))
-    start_time = xaxis[0]
-    xaxis = map(lambda x: (x - start_time) / args.freq, xaxis)
     qlens = map(float, col(1, data))
-
+    qlens = filter(lambda x: x > 10, qlens)
+    interval = 10.0/len(qlens)
+    xaxis = [x * interval for x in range(0, len(qlens))] 
     ax.plot(xaxis, qlens, lw=2)
     ax.xaxis.set_major_locator(MaxNLocator(4))
 
 plt.ylabel("RTT (ms)")
+plt.xlabel("Seconds")
 plt.grid(True)
 
 if args.out:
