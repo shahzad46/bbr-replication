@@ -168,7 +168,7 @@ def build_topology(emulator):
             "tc qdisc del dev {iface} root; "
             "tc qdisc add dev {iface} root handle 1: htb default 10; "
             "tc class add dev {iface} parent 1: classid 1:10 htb rate {rate}Mbit; "
-            "tc qdisc add dev {iface} parent 1:10 handle 20: netem delay {hdelay}ms limit {queue}; "
+            "tc qdisc add dev {iface} parent 1:10 handle 20: netem delay {delay}ms limit {queue}; "
         )
         ingress_filter = (
             "modprobe ifb numifbs=1; "
@@ -181,7 +181,7 @@ def build_topology(emulator):
         )
         pipe_args = {
             'rate': args.bw_net,
-            'hdelay': args.delay / 2,
+            'delay': args.delay,
             'queue': args.maxq
         }
         h2run(
