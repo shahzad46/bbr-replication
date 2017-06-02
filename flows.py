@@ -291,7 +291,7 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type, cong,
     def start_flow(i):
         if pre_flow_action is not None:
             pre_flow_action(net, i, base_port + i)
-        flow_commands(i, h1, h2, base_port + i, cong,
+        flow_commands(i, h1, h2, base_port + i, cong[i],
                       args.time - time_btwn_flows * i,
                       args.dir)
         flow = {
@@ -358,7 +358,7 @@ def figure5(net):
     if not args.no_capture:
         cap = start_capture("{}/capture_bbr.dmp".format(args.dir))
 
-    flows = start_flows(net, 1, 0, args.flow_type, "bbr", pre_flow_action=pinger("bbr"))
+    flows = start_flows(net, 1, 0, args.flow_type, ["bbr"], pre_flow_action=pinger("bbr"))
     display_countdown(args.time + 5)
 
     if not args.no_capture:
@@ -369,7 +369,7 @@ def figure5(net):
                        "{}/flow_bbr.dmp".format(args.dir))
         cap = start_capture("{}/capture_cubic.dmp".format(args.dir))
 
-    flows = start_flows(net, 1, 0, args.flow_type, "cubic", pre_flow_action=pinger("cubic"))
+    flows = start_flows(net, 1, 0, args.flow_type, ["cubic"], pre_flow_action=pinger("cubic"))
     display_countdown(args.time + 5)
 
     if not args.no_capture:
@@ -388,7 +388,34 @@ def figure6(net):
     # Start the iperf flows.
     n_iperf_flows = 5
     time_btwn_flows = 2
-    flows = start_flows(net, n_iperf_flows, time_btwn_flows, args.flow_type,
+    cong = [args.flow_type for x in range(n_iperf_flows)]
+    flows = start_flows(net, n_iperf_flows, time_btwn_flows, args.flow_type, cong,
+                       flow_monitor=iperf_bbr_mon)
+
+    # Print time left to show user how long they have to wait.
+    display_countdown(args.time + 5)
+
+    if not args.no_capture:
+        Popen("killall tcpdump", shell=True)
+        cap.join()
+
+    for flow in flows:
+        if flow['filter'] and not args.no_capture:
+            print "Filtering flow {}...".format(flow['index'])
+            filter_capture(flow['filter'],
+                           "{}/capture.dmp".format(args.dir),
+                           "{}/flow{}.dmp".format(args.dir, flow['index'])) 
+        if flow['monitor'] is not None:
+            flow['monitor'].terminate()
+
+def bonus(net):
+    """ """
+    # Start packet capturing
+    if not args.no_capture:
+        cap = start_capture("{}/capture.dmp".format(args.dir))
+
+    # Start the iperf flows.
+    flows = start_flows(net, 2, 0, args.flow_type, ["cubic", "bbr"],
                        flow_monitor=iperf_bbr_mon)
 
     # Print time left to show user how long they have to wait.
@@ -412,5 +439,7 @@ if __name__ == "__main__":
         run(figure5)
     elif args.fig_num == 6:
         run(figure6)
+    elif args.fig_num == 7:
+	run(bonus)
     else:
         print "Error: please enter a valid figure number: 5 or 6"
