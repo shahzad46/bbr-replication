@@ -22,6 +22,7 @@ import json
 import math
 import os
 import sched
+import socket
 import sys
 
 parser = ArgumentParser(description="BBR Replication")
@@ -74,6 +75,9 @@ parser.add_argument('--no-capture',
                     action='store_true',
                     default=False)
 
+parser.add_argument('--dest-ip',
+                    default="10.138.0.3")
+
 # Expt parameters
 args = parser.parse_args()
 
@@ -89,6 +93,11 @@ class BBTopo(Topo):
                              delay=str(args.delay) + 'ms',
                              max_queue_size=args.maxq)
         return
+
+def get_ip_address(test_destination="8.8.8.8"):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect((test_destination, 80))
+    return s.getsockname()[0]
 
 def build_topology(emulator):
     def runner(popen, noproc=False):
@@ -142,11 +151,11 @@ def build_topology(emulator):
         data = {
             'type': 'emulator',
             'h1': {
-                'IP': '10.138.0.2',
+                'IP': get_ip_address(args.dest_ip),
                 'popen': Popen,
             },
             'h2': {
-                'IP': '10.138.0.3',
+                'IP': args.dest_ip,
                 'popen': ssh_popen
             },
             'obj': None
@@ -159,7 +168,7 @@ def build_topology(emulator):
             "tc qdisc del dev {iface} root; "
             "tc qdisc add dev {iface} root handle 1: htb default 10; "
             "tc class add dev {iface} parent 1: classid 1:10 htb rate {rate}Mbit; "
-            "tc qdisc add dev {iface} parent 1:10 handle 20: netem delay {hdelay}ms limit {queue}; "
+            "tc qdisc add dev {iface} parent 1:10 handle 20: netem delay {delay}ms limit {queue}; "
         )
         ingress_filter = (
             "modprobe ifb numifbs=1; "
@@ -172,7 +181,7 @@ def build_topology(emulator):
         )
         pipe_args = {
             'rate': args.bw_net,
-            'hdelay': args.delay / 2,
+            'delay': args.delay,
             'queue': args.maxq
         }
         h2run(

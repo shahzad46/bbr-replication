@@ -9,7 +9,7 @@ mkdir -p $dir
 rm -rf $dir/*
 
 echo "running experiment..."
-python flows.py --fig-num 6 --cong bbr --time 55 --bw-net 100 --delay 10 --maxq 1024 --environment mininet --flow-type iperf --dir $dir
+python flows.py --fig-num 6 --cong bbr --time 55 --bw-net 100 --delay 5 --maxq 1024 --environment mininet --flow-type iperf --dir $dir
 
 cd $dir
 echo "processing flows..."

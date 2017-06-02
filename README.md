@@ -41,6 +41,14 @@ cd bbr-replication
 sudo ./install2.sh
 ```
 
+Copy keys from first to second VM:
+```
+gcloud compute ssh --project ${PROJECT} --zone ${ZONE} bbrtest1 \
+    --command 'cat ~/.ssh/id_rsa.pub' | \
+    gcloud compute ssh --project ${PROJECT} --zone ${ZONE} bbrtest2 \
+    --command 'cat >> ~/.ssh/authorized_keys'
+```
+
 Run the experiments:
 ```
 sudo ./figure5.sh
