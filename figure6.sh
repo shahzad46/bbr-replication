@@ -18,8 +18,8 @@ for i in 0 1 2 3 4; do
     #cd flow$i
     #tcptrace -T -S -R -y -A100 ../flow$i.dmp
     #cd ..
-    captcp throughput -u Mbit -f 2 --stdio flow$i.dmp > captcp$i.txt
-    awk '{print $1","$2 }' < captcp$i.txt > captcp-csv$i.txt
+    captcp throughput -u Mbit --stdio flow$i.dmp > captcp$i.txt
+    awk "{print (\$1+$i*2)(\",\")(\$2) }" < captcp$i.txt > captcp-csv$i.txt
 done
 cd $oldpwd
 python plot_throughput.py -f $dir/captcp-csv* -o $dir/figure6.png

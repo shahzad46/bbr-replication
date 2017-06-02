@@ -245,31 +245,29 @@ def iperf_setup(h1, h2, ports):
         h2['runner'](cmd, background=True)
     sleep(min(10, len(ports))) # make sure all the servers start
 
-def iperf_commands(index, h1, h2, port, cong, duration, outdir):
+def iperf_commands(index, h1, h2, port, cong, duration, outdir, delay=0):
     # -c [ip]: remote host
     # -w 16m: window size
     # -C: congestion control
     # -t [seconds]: duration
-    client = "iperf3 -c {} -f m -w 16m -i 1 -p {} -C {} -t {} > {}".format(
+    client = "iperf3 -c {} -f m -i 1 -p {} -C {} -t {} > {}".format(
         h2['IP'], port, cong, duration, "{}/iperf{}.txt".format(outdir, index)
     )
     h1['runner'](client, background=True)
 
-def netperf_commands(index, h1, h2, port, cong, duration, outdir):
+def netperf_commands(index, h1, h2, port, cong, duration, outdir, delay=0):
     # -H [ip]: remote host
     # -p [port]: port of netserver
     # -l [seconds]: duration
     # -P [port]: port of data flow
-    client = "netperf -H {} -p 5555 -l {} -- -s 16m, -P {} > {}".format(
-        h2['IP'], duration, port,
+    client = "netperf -H {} -s {} -p 5555 -l {} -- -K {} -P {} > {}".format(
+        h2['IP'], delay, duration, cong, port,
         "{}/netperf{}.txt".format(outdir, index)
     )
     h1['runner'](client, background=True)
 
-def netperf_setup(h1, h2, cong):
-    client = "sysctl -w net.ipv4.tcp_congestion_control={}".format(cong)
+def netperf_setup(h1, h2):
     server = "killall netserver; netserver -p 5555"
-    h1['runner'](client)
     h2['runner'](server)
 
 def start_flows(net, num_flows, time_btwn_flows, flow_type, cong,
@@ -282,7 +280,7 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type, cong,
     base_port = 1234
 
     if flow_type == 'netperf':
-        netperf_setup(h1, h2, cong[i])
+        netperf_setup(h1, h2)
         flow_commands = netperf_commands
     else:
         iperf_setup(h1, h2, [base_port + i for i in range(num_flows)])
@@ -293,19 +291,25 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type, cong,
             pre_flow_action(net, i, base_port + i)
         flow_commands(i, h1, h2, base_port + i, cong[i],
                       args.time - time_btwn_flows * i,
-                      args.dir)
+                      args.dir, delay=i*time_btwn_flows)
         flow = {
             'index': i,
-            'filter': 'src {} and dst {} and dst port {}'.format(h1['IP'], h2['IP'],
-                                                                 base_port + i),
+            'send_filter': 'src {} and dst {} and dst port {}'.format(h1['IP'], h2['IP'],
+                                                                      base_port + i),
+            'receive_filter': 'src {} and dst {} and src port {}'.format(h2['IP'], h1['IP'],
+                                                                         base_port + i),
             'monitor': None
         }
+        flow['filter'] = '"({}) or ({})"'.format(flow['send_filter'], flow['receive_filter'])
         if flow_monitor:
             flow['monitor'] = flow_monitor(net, i, base_port + i)
         flows.append(flow)
     s = sched.scheduler(time, sleep)
     for i in range(num_flows):
-        s.enter(i * time_btwn_flows, 1, start_flow, [i])
+        if flow_type == 'iperf':
+            s.enter(i * time_btwn_flows, 1, start_flow, [i])
+        else:
+            s.enter(0, i, start_flow, [i])
     s.run()
     return flows
 
@@ -393,7 +397,7 @@ def figure6(net):
                        flow_monitor=iperf_bbr_mon)
 
     # Print time left to show user how long they have to wait.
-    display_countdown(args.time + 5)
+    display_countdown(args.time + 15)
 
     if not args.no_capture:
         Popen("killall tcpdump", shell=True)
