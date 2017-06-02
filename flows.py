@@ -86,7 +86,7 @@ class BBTopo(Topo):
         switch = self.addSwitch('s0')
         link1 = self.addLink(host1, switch)
         link2 = self.addLink(host2, switch, bw=args.bw_net,
-                             delay=str(args.delay) + 'ms',
+                             delay=args.delay,
                              max_queue_size=args.maxq)
         return
 
@@ -178,11 +178,9 @@ def build_topology(emulator):
         h2run(
             ingress_filter.format(iface="ens4") +
             pipe_filter.format(iface="ifb0", **pipe_args) +
-            "tc qdisc del dev ens4 root; "
+            pipe_filter.format(iface="ens4", **pipe_args)
         )
         h1run(
-            ingress_filter.format(iface="ens4") +
-            pipe_filter.format(iface="ifb0", hdelay=args.delay/2, queue=1000, rate=1000) +
             "tc qdisc del dev ens4 root; "
             "tc qdisc add dev ens4 root fq pacing; "
         )
@@ -250,8 +248,9 @@ def iperf_commands(index, h1, h2, port, cong, duration, outdir, delay=0):
     # -w 16m: window size
     # -C: congestion control
     # -t [seconds]: duration
-    client = "iperf3 -c {} -f m -i 1 -p {} -C {} -t {} > {}".format(
-        h2['IP'], port, cong, duration, "{}/iperf{}.txt".format(outdir, index)
+    window = '-w 16m' if args.fig_num == 6 else ''
+    client = "iperf3 -c {} -f m -i 1 -p {} {} -C {} -t {} > {}".format(
+        h2['IP'], port, window, cong, duration, "{}/iperf{}.txt".format(outdir, index)
     )
     h1['runner'](client, background=True)
 
