@@ -178,7 +178,8 @@ def build_topology(emulator):
         h2run(
             ingress_filter.format(iface="ens4") +
             pipe_filter.format(iface="ifb0", **pipe_args) +
-            pipe_filter.format(iface="ens4", **pipe_args)
+            pipe_filter.format(iface="ens4", **pipe_args) +
+            "sudo ethtool -K ens4 gro off; sudo ethtool -K ifb0 gro off; "
         )
         h1run(
             "tc qdisc del dev ens4 root; "
