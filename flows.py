@@ -60,6 +60,9 @@ parser.add_argument('--flow-type',
 parser.add_argument('--environment',
                     default="vms")
 
+parser.add_argument('--action',
+                    default='figure5')
+
 # may want to set for mininet
 parser.add_argument('--no-capture',
                     action='store_true',
@@ -147,6 +150,42 @@ def build_topology(emulator):
             },
             'obj': None
         }
+
+        # set up tc qdiscs on hosts
+        h2run = runner(data['h2']['popen'], noproc=False)
+        h1run = runner(data['h1']['popen'], noproc=False)
+        pipe_filter = (
+            "tc qdisc del dev {iface} root; "
+            "tc qdisc add dev {iface} root handle 1: htb default 10; "
+            "tc class add dev {iface} parent 1: classid 1:10 htb rate {rate}Mbit; "
+            "tc qdisc add dev {iface} parent 1:10 handle 20: netem delay {hdelay}ms limit {queue}; "
+        )
+        ingress_filter = (
+            "modprobe ifb numifbs=1; "
+            "ip link set dev ifb0 up; "
+            "ifconfig ifb0 txqueuelen 1000; "
+            "tc qdisc del dev {iface} ingress; "
+            "tc qdisc add dev {iface} handle ffff: ingress; "
+            "tc filter add dev {iface} parent ffff: protocol all u32 match u32 0 0 action"
+            " mirred egress redirect dev ifb0; "
+        )
+        pipe_args = {
+            'rate': args.bw_net,
+            'hdelay': args.delay / 2,
+            'queue': args.maxq
+        }
+        h2run(
+            ingress_filter.format(iface="ens4") +
+            pipe_filter.format(iface="ifb0", **pipe_args) +
+            "tc qdisc del dev ens4 root; "
+        )
+        h1run(
+            ingress_filter.format(iface="ens4") +
+            pipe_filter.format(iface="ifb0", hdelay=args.delay/2, queue=1000, rate=1000) +
+            "tc qdisc del dev ens4 root; "
+            "tc qdisc add dev ens4 root fq pacing; "
+        )
+
     data['h1']['runner'] = runner(data['h1']['popen'], noproc=False)
     data['h2']['runner'] = runner(data['h2']['popen'], noproc=False)
 
@@ -228,7 +267,7 @@ def netperf_commands(index, h1, h2, port, cong, duration, outdir):
     # -p [port]: port of netserver
     # -l [seconds]: duration
     # -P [port]: port of data flow
-    client = "netperf -H {} -p 5555 -l {} -- -P {} > {}".format(
+    client = "netperf -H {} -p 5555 -l {} -- -s 16m, -P {} > {}".format(
         h2['IP'], duration, port,
         "{}/netperf{}.txt".format(outdir, index)
     )
@@ -334,5 +373,63 @@ def figure6(net):
         if flow['monitor'] is not None:
             flow['monitor'].terminate()
 
+
+# Display a countdown to the user to show time remaining.
+def display_countdown(nseconds):
+    start_time = time()
+    while True:
+        sleep(5)
+        now = time()
+        delta = now - start_time
+        if delta > nseconds:
+            break
+        print "%.1fs left..." % (nseconds - delta)
+
+
+def figure5(net):
+    """ """
+    h1 = net.get('h1')
+    h2 = net.get('h2')
+
+    cap = start_capture("{}/capture_bbr.dmp".format(args.dir))
+
+    netperf_setup(h1, h2, 'bbr')
+    start_ping(net, args.time, "bbr_rtt.txt")
+    netperf_commands('bbr', h1, h2, 2222, "bbr", args.time, args.dir)
+    print "tracking rtt for bbr flow"
+    display_countdown(args.time+5)
+
+    Popen("killall tcpdump", shell=True)
+    cap.join()
+    filter_capture('port 2222',
+                   "{}/capture_bbr.dmp".format(args.dir),
+                   "{}/flow_bbr.dmp".format(args.dir))
+
+    cap = start_capture("{}/capture_cubic.dmp".format(args.dir))
+
+    h1['runner']("tc qdisc del dev ens4 root; ")
+    netperf_setup(h1, h2, 'cubic')
+    start_ping(net, args.time, "cubic_rtt.txt")
+    netperf_commands('cubic', h1, h2, 2222, "cubic", args.time, args.dir)
+    print "tracking rtt for cubic flow"
+    display_countdown(args.time+5)
+
+    Popen("killall tcpdump", shell=True)
+    cap.join()
+    filter_capture('port 2222',
+                   "{}/capture_cubic.dmp".format(args.dir),
+                   "{}/flow_cubic.dmp".format(args.dir))
+
+def start_ping(net, time, fname):
+    h1 = net['h1']
+    h2 = net['h2']
+    command = "ping -i 0.1 -c {} {} > {}/{}".format(time*10, h2['IP'],\
+                                                    args.dir, fname)
+    h1['runner'](command, background=True)
+
 if __name__ == "__main__":
-    run(figure6)
+    if args.action == 'figure5':
+        run(figure5)
+    else:
+        run(figure6)
+

@@ -1,5 +1,5 @@
 oldpwd=$PWD
-python flows.py --time 50 --environment vms --flow-type netperf --dir $1
+python flows.py --action figure6 --cong bbr --time 50 --bw-net 100 --delay 10 --maxq 125 --environment vms --flow-type netperf --dir $1
 cd $1
 echo "tcptracing flows..."
 for i in 0 1 2 3 4; do
