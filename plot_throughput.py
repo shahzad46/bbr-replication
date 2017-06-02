@@ -69,6 +69,8 @@ for i, f in enumerate(sorted(args.files)):
     ax.plot(xaxis, throughput, label=args.legend[i], lw=2, **get_style(i))
     ax.xaxis.set_major_locator(MaxNLocator(4))
 
+if args.legend is not None:
+	plt.legend()
 plt.ylabel("Throughput (Mbits)")
 plt.grid(True)
 plt.xlabel("Seconds")

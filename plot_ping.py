@@ -47,12 +47,18 @@ for i, f in enumerate(args.files):
     qlens = filter(lambda x: x > 10, qlens)
     interval = 10.0/len(qlens)
     xaxis = [x * interval for x in range(0, len(qlens))] 
-    ax.plot(xaxis, qlens, lw=2)
+    if "bbr" in args.files[i]:
+	name = "bbr"
+    else:
+	name = "cubic"
+    ax.plot(xaxis, qlens, lw=2, label=name)
+    plt.legend()
     ax.xaxis.set_major_locator(MaxNLocator(4))
 
 plt.ylabel("RTT (ms)")
 plt.xlabel("Seconds")
 plt.grid(True)
+plt.tight_layout()
 
 if args.out:
     plt.savefig(args.out)

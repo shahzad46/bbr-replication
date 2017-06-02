@@ -9,7 +9,7 @@ mkdir -p $dir
 rm -rf $dir/*
 
 echo "running experiment..."
-python flows.py --fig-num 7 --cong bbr --time 100 --bw-net 10 --delay 10 --maxq 264 --environment mininet --flow-type iperf --dir $dir
+python flows.py --fig-num 7 --cong bbr --time 100 --bw-net 10 --delay 10 --maxq 200 --environment mininet --flow-type iperf --dir $dir
 
 cd $dir
 echo "processing flows..."
@@ -22,4 +22,4 @@ for i in 0 1; do
     awk '{print $1","$2 }' < captcp$i.txt > captcp-csv$i.txt
 done
 cd $oldpwd
-python plot_throughput.py -f $dir/captcp-csv* -o $dir/bonus.png
+python plot_throughput.py -f $dir/captcp-csv* -o $dir/bonus.png -l cubic bbr

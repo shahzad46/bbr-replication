@@ -329,7 +329,6 @@ def run(action):
         os.makedirs(args.dir)
 
     net = build_topology(args.environment)
-
     if action:
         action(net)
 
