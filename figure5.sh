@@ -9,7 +9,7 @@ mkdir -p $dir
 rm -rf $dir/*
 
 echo "running experiment..."
-python flows.py --fig-num 5 --time 10 --bw-net 10 --delay 40 --maxq 200 --environment mininet --flow-type iperf --dir $dir
+python flows.py --no-capture --fig-num 5 --time 10 --bw-net 10 --delay 10 --maxq 100 --environment mininet --flow-type iperf --dir $dir
 
 #captcp throughput -u Mbit -f 2 --stdio $dir/flow_bbr.dmp > $dir/tput_bbr.txt
 #awk '{print $1","$2 }' < $dir/tput_bbr.txt > $dir/tcpdump-bbr.csv

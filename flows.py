@@ -272,7 +272,7 @@ def netperf_setup(h1, h2, cong):
     h1['runner'](client)
     h2['runner'](server)
 
-def start_flows(net, num_flows, time_btwn_flows, flow_type,
+def start_flows(net, num_flows, time_btwn_flows, flow_type, cong,
                 pre_flow_action=None, flow_monitor=None):
     h1 = net['h1']
     h2 = net['h2']
@@ -282,7 +282,7 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type,
     base_port = 1234
 
     if flow_type == 'netperf':
-        netperf_setup(h1, h2, args.cong)
+        netperf_setup(h1, h2, cong)
         flow_commands = netperf_commands
     else:
         iperf_setup(h1, h2, [base_port + i for i in range(num_flows)])
@@ -291,7 +291,7 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type,
     def start_flow(i):
         if pre_flow_action is not None:
             pre_flow_action(net, i, base_port + i)
-        flow_commands(i, h1, h2, base_port + i, args.cong,
+        flow_commands(i, h1, h2, base_port + i, cong,
                       args.time - time_btwn_flows * i,
                       args.dir)
         flow = {
@@ -358,7 +358,7 @@ def figure5(net):
     if not args.no_capture:
         cap = start_capture("{}/capture_bbr.dmp".format(args.dir))
 
-    flows = start_flows(net, 1, 0, "bbr", pre_flow_action=pinger("bbr"))
+    flows = start_flows(net, 1, 0, args.flow_type, "bbr", pre_flow_action=pinger("bbr"))
     display_countdown(args.time + 5)
 
     if not args.no_capture:
@@ -369,7 +369,7 @@ def figure5(net):
                        "{}/flow_bbr.dmp".format(args.dir))
         cap = start_capture("{}/capture_cubic.dmp".format(args.dir))
 
-    flows = start_flows(net, 10, 0, "cubic", pre_flow_action=pinger("cubic"))
+    flows = start_flows(net, 1, 0, args.flow_type, "cubic", pre_flow_action=pinger("cubic"))
     display_countdown(args.time + 5)
 
     if not args.no_capture:
