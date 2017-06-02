@@ -13,7 +13,7 @@ iperf_port=5001
 for qsize in 125; do
     dir=figure6
     rm $dir/*
-    python iperf_flows.py --time $time --bw-net $bwnet --delay $delay --dir $dir --bw-host 1000 --maxq $qsize --fig_num 6
+    python flows.py --time $time --bw-net $bwnet --delay $delay --dir $dir --bw-host 1000 --maxq $qsize --fig_num 6
 
 
     for i in 0 1 2 3; do
