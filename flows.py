@@ -282,7 +282,7 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type, cong,
     base_port = 1234
 
     if flow_type == 'netperf':
-        netperf_setup(h1, h2, cong)
+        netperf_setup(h1, h2, cong[i])
         flow_commands = netperf_commands
     else:
         iperf_setup(h1, h2, [base_port + i for i in range(num_flows)])
@@ -388,7 +388,7 @@ def figure6(net):
     # Start the iperf flows.
     n_iperf_flows = 5
     time_btwn_flows = 2
-    cong = [args.flow_type for x in range(n_iperf_flows)]
+    cong = [args.cong for x in range(n_iperf_flows)]
     flows = start_flows(net, n_iperf_flows, time_btwn_flows, args.flow_type, cong,
                        flow_monitor=iperf_bbr_mon)
 
