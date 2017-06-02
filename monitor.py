@@ -33,9 +33,16 @@ def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=0.01):
     Popen(cmd, shell=True).wait()
 
 
-def monitor_bbr(dst, interval_sec = 0.01, fname='%s/bbr.txt' % default_dir, host=None):
+def capture_packets(options="", fname='%s/capture.dmp' % default_dir, runner=None):
+    cmd = "tcpdump -i any -w {} {}".format(fname, options)
+    print cmd
+    runner = Popen if runner is None else runner
+    return runner(cmd, shell=True).wait()
+
+
+def monitor_bbr(dst, interval_sec = 0.01, fname='%s/bbr.txt' % default_dir, runner=None):
     cmd = "ss -iet dst %s" % (dst)
-    runner = Popen if host is None else host.popen
+    runner = Popen if runner is None else runner
     print dst
     ret = []
     open(fname, 'w').write('')

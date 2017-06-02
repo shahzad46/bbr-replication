@@ -3,22 +3,23 @@
 # Note: Mininet must be run as root.  So invoke this shell script
 # using sudo.
 
-time=80
-bwnet=100
-# For RTT 20ms
-delay=10
+oldpwd=$PWD
+dir=${1:-figure6_files}
+mkdir -p $dir
+rm -rf $dir/*
 
-iperf_port=5001
+echo "running experiment..."
+python flows.py --fig-num 6 --cong bbr --time 55 --bw-net 100 --delay 10 --maxq 125 --environment mininet --flow-type iperf --dir $dir
 
-for qsize in 125; do
-    dir=figure6
-    rm $dir/*
-    python flows.py --time $time --bw-net $bwnet --delay $delay --dir $dir --bw-host 1000 --maxq $qsize --fig_num 6
-
-
-    for i in 0 1 2 3; do
-    	grep -a Mbits  $dir/iperf$i.txt | awk '{print $3","$7 }' | awk -F '-' '{print $2}' > $dir/iperf-csv$i.txt
-    done
-    python plot_throughput.py -f $dir/iperf-csv* -o $dir/figure6.png
-
+cd $dir
+echo "processing flows..."
+for i in 0 1 2 3 4; do
+    #mkdir flow$i
+    #cd flow$i
+    #tcptrace -T -S -R -y -A100 ../flow$i.dmp
+    #cd ..
+    captcp throughput -u Mbit -f 2 --stdio flow$i.dmp > captcp$i.txt
+    awk '{print $1","$2 }' < captcp$i.txt > captcp-csv$i.txt
 done
+cd $oldpwd
+python plot_throughput.py -f $dir/captcp-csv* -o $dir/figure6.png
