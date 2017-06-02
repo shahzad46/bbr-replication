@@ -88,7 +88,8 @@ class BBTopo(Topo):
         host1 = self.addHost('h1')
         host2 = self.addHost('h2')
         switch = self.addSwitch('s0')
-        link1 = self.addLink(host1, switch)
+        link1 = self.addLink(host1, switch,
+                             bw=args.bw_host)
         link2 = self.addLink(host2, switch, bw=args.bw_net,
                              delay=str(args.delay) + 'ms',
                              max_queue_size=args.maxq)
@@ -123,7 +124,6 @@ def build_topology(emulator):
 
         dumpNodeConnections(net.hosts)
         net.pingAll()
-
         data = {
             'type': 'mininet',
             'h1': {
@@ -137,6 +137,16 @@ def build_topology(emulator):
             'obj': net,
             'cleanupfn': net.stop
         }
+        # disable gso, tso, gro
+        h2run = runner(data['h2']['popen'], noproc=False)
+        h1run = runner(data['h1']['popen'], noproc=False)
+        h1run(
+            "sudo ethtool -K h1-eth0 gso off tso off gro off;"
+        )
+        h2run(
+            "sudo ethtool -K h2-eth0 gso off tso off gro off;"
+        )
+
     else:
         def ssh_popen(command, *args, **kwargs):
             user = os.environ.get('SUDO_USER', os.environ['USER'])
@@ -193,6 +203,7 @@ def build_topology(emulator):
         h1run(
             "tc qdisc del dev ens4 root; "
             "tc qdisc add dev ens4 root fq pacing; "
+            "sudo ethtool -K ens4 gso off tso off;"
         )
 
     data['h1']['runner'] = runner(data['h1']['popen'], noproc=False)
