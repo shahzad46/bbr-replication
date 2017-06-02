@@ -4,7 +4,7 @@ Plot queue occupancy over time
 from helper import *
 import plot_defaults
 
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import LinearLocator
 from pylab import figure
 
 
@@ -67,7 +67,7 @@ for i, f in enumerate(sorted(args.files)):
     xaxis = map(float, col(0, data))
     throughput = map(float, col(1, data))
     ax.plot(xaxis, throughput, label=args.legend[i], lw=2, **get_style(i))
-    ax.xaxis.set_major_locator(MaxNLocator(4))
+    ax.xaxis.set_major_locator(LinearLocator(6))
 
 if args.legend is not None:
 	plt.legend()

@@ -4,7 +4,7 @@ Plot ping RTTs over time
 from helper import *
 import plot_defaults
 
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import LinearLocator
 from pylab import figure
 
 parser = argparse.ArgumentParser()
@@ -45,7 +45,7 @@ for i, f in enumerate(args.files):
     data = parse_ping(f)
     qlens = map(float, col(1, data))
     qlens = filter(lambda x: x > 10, qlens)
-    interval = 10.0/len(qlens)
+    interval = 8.0/len(qlens)
     xaxis = [x * interval for x in range(0, len(qlens))] 
     if "bbr" in args.files[i]:
 	name = "bbr"
@@ -53,7 +53,7 @@ for i, f in enumerate(args.files):
 	name = "cubic"
     ax.plot(xaxis, qlens, lw=2, label=name)
     plt.legend()
-    ax.xaxis.set_major_locator(MaxNLocator(4))
+    ax.xaxis.set_major_locator(LinearLocator(5))
 
 plt.ylabel("RTT (ms)")
 plt.xlabel("Seconds")
