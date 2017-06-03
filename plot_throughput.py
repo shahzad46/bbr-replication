@@ -35,6 +35,11 @@ parser.add_argument('--labels',
                     nargs="+",
                     dest="labels")
 
+parser.add_argument('--xlimit',
+                    help="Upper limit of x axis, data after ignored",
+                    type=float,
+                    default=50)
+
 parser.add_argument('--every',
                     help="If the plot has a lot of data points, plot one of every EVERY (x,y) point (default 1).",
                     default=1,
@@ -66,6 +71,10 @@ for i, f in enumerate(sorted(args.files)):
     data = read_list(f)
     xaxis = map(float, col(0, data))
     throughput = map(float, col(1, data))
+    throughput = [t for j, t in enumerate(throughput)
+                  if xaxis[j] <= args.xlimit]
+    xaxis = [x for x in xaxis if x <= args.xlimit]
+
     ax.plot(xaxis, throughput, label=args.legend[i], lw=2, **get_style(i))
     ax.xaxis.set_major_locator(LinearLocator(6))
 

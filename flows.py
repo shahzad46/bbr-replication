@@ -266,9 +266,12 @@ def iperf_setup(h1, h2, ports):
 
 def iperf_commands(index, h1, h2, port, cong, duration, outdir, delay=0):
     # -c [ip]: remote host
-    # -w 16m: window size
+    # -w [size]: TCP buffer size
     # -C: congestion control
     # -t [seconds]: duration
+    # -p [port]: port
+    # -f m: format in megabits
+    # -i 1: measure every second
     window = '-w 16m' if args.fig_num == 6 else ''
     client = "iperf3 -c {} -f m -i 1 -p {} {} -C {} -t {} > {}".format(
         h2['IP'], port, window, cong, duration, "{}/iperf{}.txt".format(outdir, index)
@@ -278,10 +281,14 @@ def iperf_commands(index, h1, h2, port, cong, duration, outdir, delay=0):
 def netperf_commands(index, h1, h2, port, cong, duration, outdir, delay=0):
     # -H [ip]: remote host
     # -p [port]: port of netserver
+    # -s [time]: time to sleep
     # -l [seconds]: duration
-    # -P [port]: port of data flow
-    client = "netperf -H {} -s {} -p 5555 -l {} -- -K {} -P {} > {}".format(
-        h2['IP'], delay, duration, cong, port,
+    # -- -s [size]: sender TCP buffer
+    # -- -P [port]: port of data flow
+    # -- -K [cong]: congestion control protocol
+    window = '-s 16m,' if args.fig_num == 6 else ''
+    client = "netperf -H {} -s {} -p 5555 -l {} -- {} -K {} -P {} > {}".format(
+        h2['IP'], delay, duration, window, cong, port,
         "{}/netperf{}.txt".format(outdir, index)
     )
     h1['runner'](client, background=True)
