@@ -14,10 +14,10 @@ parser.add_argument('--files', '-f',
                     action="store",
                     nargs='+')
 
-parser.add_argument('--freq',
-                    help="Frequency of pings (per second)",
-                    type=int,
-                    default=10)
+parser.add_argument('--xlimit',
+                    help="Upper limit of x axis, data after ignored",
+                    type=float,
+                    default=8)
 
 parser.add_argument('--out', '-o',
                     help="Output png file for the plot.",
@@ -25,33 +25,22 @@ parser.add_argument('--out', '-o',
 
 args = parser.parse_args()
 
-def parse_ping(fname):
-    ret = []
-    lines = open(fname).readlines()
-    num = 0
-    for line in lines:
-        try:
-            rtt = float(line) * 1000
-            ret.append([num, rtt])
-            num += 1
-        except:
-            break
-    return ret
-
-m.rc('figure', figsize=(16, 6))
+m.rc('figure', figsize=(32, 12))
 fig = figure()
 ax = fig.add_subplot(111)
 for i, f in enumerate(args.files):
-    data = parse_ping(f)
-    qlens = map(float, col(1, data))
-    qlens = filter(lambda x: x > 10, qlens)
-    interval = 8.0/len(qlens)
-    xaxis = [x * interval for x in range(0, len(qlens))] 
+    data = read_list(f)
+    xaxis = map(float, col(0, data))
+    rtts = map(float, col(1, data))
+    xaxis = [x - xaxis[0] for x in xaxis]
+    rtts = [r * 1000 for j, r in enumerate(rtts)
+            if xaxis[j] <= args.xlimit]
+    xaxis = [x for x in xaxis if x <= args.xlimit]
     if "bbr" in args.files[i]:
 	name = "bbr"
     else:
 	name = "cubic"
-    ax.plot(xaxis, qlens, lw=2, label=name)
+    ax.plot(xaxis, rtts, lw=2, label=name)
     plt.legend()
     ax.xaxis.set_major_locator(LinearLocator(5))
 

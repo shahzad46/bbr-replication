@@ -154,7 +154,6 @@ def build_topology(emulator):
                 user, user, data['h2']['IP'], 'sudo bash -c',
                 json.dumps(command)
             )
-            print full_command
             kwargs['shell'] = True
             return Popen(full_command, *args, **kwargs)
 
@@ -198,12 +197,13 @@ def build_topology(emulator):
             ingress_filter.format(iface="ens4") +
             pipe_filter.format(iface="ifb0", **pipe_args) +
             pipe_filter.format(iface="ens4", **pipe_args) +
-            "sudo ethtool -K ens4 gro off; sudo ethtool -K ifb0 gro off; "
+            "sudo ethtool -K ens4 gso off tso off gro off; "
+            "sudo ethtool -K ifb0 gso off tso off gro off; "
         )
         h1run(
             "tc qdisc del dev ens4 root; "
             "tc qdisc add dev ens4 root fq pacing; "
-            "sudo ethtool -K ens4 gso off tso off;"
+            "sudo ethtool -K ens4 gso off tso off gro off; "
         )
 
     data['h1']['runner'] = runner(data['h1']['popen'], noproc=False)

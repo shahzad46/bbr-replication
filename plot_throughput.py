@@ -58,7 +58,7 @@ def get_style(i):
     else:
         return {'color': 'black'}
 
-m.rc('figure', figsize=(16, 6))
+m.rc('figure', figsize=(32, 12))
 fig = figure()
 ax = fig.add_subplot(111)
 time_btwn_flows = 2.0
