@@ -1,7 +1,39 @@
 source settings.sh
 
 create_project() {
-    gcloud projects create $PROJECT
+    exists=`gcloud projects list --format json --filter "$PROJECT" | grep "\"$PROJECT\""`
+    if [ -z "$exists" ];
+    then
+	echo "Creating project $PROJECT"
+	gcloud projects create "$PROJECT"
+    else
+	echo "Using existing project $PROJECT"
+    fi
+
+    gcloud components install alpha
+
+    billing=`gcloud alpha billing accounts projects describe --format "get(billingEnabled)" "$PROJECT"`
+    if [ "$billing"!="True" ];
+    then
+	echo "Associating a billing account with $PROJECT"
+	accounts=`gcloud alpha billing accounts list --filter open=true --format "get(name,displayName)"`
+	num_accounts=`echo $accounts | wc -l`
+	if [ -z "$accounts" ];
+	then
+	    echo "Could not find a billing account to use. Please use the GCloud interface to create one and link it to the $PROJECT project"
+	    exit 1
+	fi
+	if [ "$num_accounts"="1" ];
+	then
+	    account=`echo $accounts | cut -c 17-36`
+	else
+	    echo "Available Billing Accounts:"
+	    echo "$accounts"
+	    echo "Which account should be used for this project? [XXXXXX-XXXXXX-XXXXXX]: "
+	    read account
+	fi
+	gcloud alpha billing accounts projects link "$PROJECT" --account-id=$account
+    fi
 }
 
 make_vm() {
@@ -13,7 +45,7 @@ make_vm() {
     gcloud compute instances create "$NAME" \
 	--project "$PROJECT" \
 	--zone "$ZONE" \
-	--machine-type "n1-standard-8" \
+	--machine-type "n1-standard-4" \
 	--network "default" \
 	--maintenance-policy "MIGRATE" \
 	--boot-disk-type "pd-standard" \
@@ -79,10 +111,10 @@ create_project
 make_vm ${NAME1} ${PROJECT} ${ZONE}
 make_vm ${NAME2} ${PROJECT} ${ZONE}
 
-upgrade_kernel ${NAME1} ${PROJECT} ${ZONE}
-upgrade_kernel ${NAME2} ${PROJECT} ${ZONE}
+#upgrade_kernel ${NAME1} ${PROJECT} ${ZONE}
+#upgrade_kernel ${NAME2} ${PROJECT} ${ZONE}
 
-install_deps ${NAME1} ${PROJECT} ${ZONE}
-install_deps ${NAME2} ${PROJECT} ${ZONE}
+#install_deps ${NAME1} ${PROJECT} ${ZONE}
+#install_deps ${NAME2} ${PROJECT} ${ZONE}
 
-link_vms ${NAME1} ${NAME2} ${PROJECT} ${ZONE}
+#link_vms ${NAME1} ${NAME2} ${PROJECT} ${ZONE}
