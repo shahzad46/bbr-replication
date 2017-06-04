@@ -1,11 +1,8 @@
 #!/bin/bash
 
-# Note: Mininet must be run as root.  So invoke this shell script
-# using sudo.
-
-sudo apt-get update
-sudo apt-get build-dep linux
-sudo apt-get upgrade
+sudo apt-get -y update
+sudo apt-get -y build-dep linux
+sudo apt-get -y upgrade
 
 #download and install modified linux kernel
 cd /usr/src && sudo chmod 1777 .
@@ -20,4 +17,4 @@ make -j`nproc` modules
 sudo bash -c 'echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf'
 sudo bash -c 'echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf'
 sudo make -j`nproc` modules_install install
-sudo reboot now
+# sudo reboot now
