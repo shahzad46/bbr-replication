@@ -13,7 +13,7 @@ make_vm() {
     gcloud compute instances create "$NAME" \
 	--project "$PROJECT" \
 	--zone "$ZONE" \
-	--machine-type "n1-standard-8" \
+	--machine-type "n1-standard-4" \
 	--network "default" \
 	--maintenance-policy "MIGRATE" \
 	--boot-disk-type "pd-standard" \
@@ -36,6 +36,7 @@ make_vm() {
     done;
     gcloud compute copy-files --project $PROJECT --zone $ZONE * $NAME:~/bbr-replication
 }
+
 
 upgrade_kernel() {
     NAME=$1
@@ -72,15 +73,36 @@ link_vms() {
 	--command 'cat > ~/.bbr_pair_ip'
 }
 
+wait_for_reboots() {
+    NAME1=$1
+    NAME2=$2
+    PROJECT=$3
+    ZONE=$4
+
+until gcloud compute ssh --project $PROJECT --zone $ZONE $NAME1 --command "echo $NAME1 Rebooted!"
+do
+    echo "Waiting for $NAME1 to reboot..."
+    sleep 2
+done;
+
+until gcloud compute ssh --project $PROJECT --zone $ZONE $NAME2 --command "echo $NAME2 Rebooted!"
+do
+    echo "Waiting for $NAME2 to reboot..."
+    sleep 2
+done;
+}
+
 # Comment out completed steps
 
-create_project
+#create_project
 
 make_vm ${NAME1} ${PROJECT} ${ZONE}
 make_vm ${NAME2} ${PROJECT} ${ZONE}
 
 upgrade_kernel ${NAME1} ${PROJECT} ${ZONE}
 upgrade_kernel ${NAME2} ${PROJECT} ${ZONE}
+
+wait_for_reboots ${NAME1} ${NAME2} ${PROJECT} ${ZONE}
 
 install_deps ${NAME1} ${PROJECT} ${ZONE}
 install_deps ${NAME2} ${PROJECT} ${ZONE}
