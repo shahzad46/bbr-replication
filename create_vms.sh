@@ -23,7 +23,7 @@ create_project() {
     gcloud components install alpha
 
     billing=`gcloud alpha billing accounts projects describe --format "get(billingEnabled)" "$PROJECT"`
-    if [ "$billing"!="True" ];
+    if [ ! "$billing"="True" ];
     then
 	echo "Associating a billing account with $PROJECT"
 	accounts=`gcloud alpha billing accounts list --filter open=true --format "get(name,displayName)"`
