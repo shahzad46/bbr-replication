@@ -19,7 +19,7 @@ but you can change this by modifying `settings.sh`
 
 Run the script to create the VMs:
 ```
-# This script will take roughly 20-30 minutes to complete.
+# This script will take roughly 30 minutes to complete.
 # You may need to interact with 1 or 2 prompts at the beginning when it
 # launches the VMs
 bash create_vms.sh
