@@ -150,7 +150,7 @@ def build_topology(emulator):
     else:
         def ssh_popen(command, *args, **kwargs):
             user = os.environ.get('SUDO_USER', os.environ['USER'])
-            full_command = "ssh -i /home/{}/.ssh/id_rsa {}@{} '{} {}'".format(
+            full_command = "ssh -o StrictHostKeyChecking=no -i /home/{}/.ssh/id_rsa {}@{} '{} {}'".format(
                 user, user, data['h2']['IP'], 'sudo bash -c',
                 json.dumps(command)
             )
