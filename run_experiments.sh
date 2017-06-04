@@ -6,7 +6,7 @@ run_experiments() {
     ZONE=$3
 
     echo "Running all experiments"
-    #gcloud compute ssh --project $PROJECT --zone $ZONE $NAME --command "cd ~/bbr-replication && bash create_figures.sh"
+    gcloud compute ssh --project $PROJECT --zone $ZONE $NAME --command "cd ~/bbr-replication && bash create_figures.sh"
     gcloud compute scp --recurse --project $PROJECT --zone $ZONE $NAME:~/bbr-replication/figures ./
 }
 

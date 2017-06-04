@@ -2,27 +2,31 @@
 
 Modified from https://github.com/google/bbr/blob/master/Documentation/bbr-quick-start.md
 
-Install gcloud command line tools following the instructions at: 
-https://cloud.google.com/sdk/downloads 
+The experiment setup uses two Google cloud VMs running a modified linux kernel. We
+provide a simple install script to create the VMs and install all needed
+dependencies.
 
-Out setup requires installing a modified linux kernel and creating up two customes vms. 
-gcloud commandline tools are required so that you can run our simple install script.
+The script uses gcloud commandline tools, so first install those following the
+instructions at: https://cloud.google.com/sdk/downloads 
 
-Create a gcloud project:
+Now login to a gcloud project:
 ```
 gcloud auth login
-gcloud create project bbr-replication 
-gcloud config set project bbr-replication
---- add billing  
 ```
 
-Create the vms:
+By default, the script uses a new "bbr-replication" project for the VMs, but you
+can change this by modifying `settings.sh`
+
+Now clone this repo and run the script to create the VMs:
 ```
 git clone https://github.com/bgirardeau/bbr-replication
 cd bbr-replication
-# This script will take roughly 20-30 minutes to complete. 
-bash ./create_vms.sh
+# This script will take roughly 20-30 minutes to complete.
+# You may need to interact with 1 or 2 prompts at the beginning when launching
+# the VMs
+bash create_vms.sh
 ```
+
 Run the experiments:
 ```
 # This will run all the three experiments with vm-vm and mininet setup. 
