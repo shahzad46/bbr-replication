@@ -1,14 +1,24 @@
 source settings.sh
 
 create_project() {
+    if [ -z "$PROJECT" ];
+    then
+	PROJECT="${PROJECT_NAME}${RANDOM}-${RANDOM}"
+	cat settings.sh | head -n 4 > settings_temp.sh
+	echo "PROJECT=$PROJECT" >> settings_temp.sh
+	mv settings_temp.sh settings.sh
+    fi
     exists=`gcloud projects list --format json --filter "$PROJECT" | grep "\"$PROJECT\""`
+
     if [ -z "$exists" ];
     then
 	echo "Creating project $PROJECT"
-	gcloud projects create "$PROJECT"
+	gcloud projects create "$PROJECT" --name "$PROJECT_NAME" --enable-cloud-apis
     else
 	echo "Using existing project $PROJECT"
     fi
+
+    gcloud config set project "$PROJECT"
 
     gcloud components install alpha
 
@@ -41,7 +51,7 @@ make_vm() {
     PROJECT=$2
     ZONE=$3
 
-    echo "Creating VM $NAME"
+    echo "Creating VM $NAME in $PROJECT"
     gcloud compute instances create "$NAME" \
 	--project "$PROJECT" \
 	--zone "$ZONE" \
@@ -56,7 +66,7 @@ make_vm() {
     made_vm=$?
 
     echo "Copying files to $NAME"
-    until gcloud compute ssh --project $PROJECT --zone $ZONE $NAME --command "mkdir -p bbr-replication"
+    until gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME" --command "mkdir -p bbr-replication"
     do
 	if [ made_vm ];
 	then
@@ -66,7 +76,7 @@ make_vm() {
 	    break
 	fi
     done;
-    gcloud compute copy-files --project $PROJECT --zone $ZONE * $NAME:~/bbr-replication
+    gcloud compute copy-files --project "$PROJECT" --zone "$ZONE" * "$NAME:~/bbr-replication"
 }
 
 
@@ -76,7 +86,7 @@ upgrade_kernel() {
     ZONE=$3
 
     echo "Installing kernel on $NAME"
-    gcloud compute ssh --project $PROJECT --zone $ZONE $NAME --command "cd ~/bbr-replication && bash install_kernel.sh"
+    gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME" --command "cd ~/bbr-replication && bash install_kernel.sh"
 }
 
 install_deps() {
@@ -85,7 +95,7 @@ install_deps() {
     ZONE=$3
 
     echo "Installing dependencies on $NAME"
-    gcloud compute ssh --project $PROJECT --zone $ZONE $NAME --command "cd ~/bbr-replication && bash install_deps.sh"
+    gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME" --command "cd ~/bbr-replication && bash install_deps.sh"
 }
 
 link_vms() {
@@ -94,14 +104,14 @@ link_vms() {
     PROJECT=$3
     ZONE=$4
 
-    gcloud compute ssh --project ${PROJECT} --zone ${ZONE} ${NAME1} \
+    gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME1" \
 	--command 'cat ~/.ssh/id_rsa.pub' | \
-	gcloud compute ssh --project ${PROJECT} --zone ${ZONE} ${NAME2} \
+	gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME2" \
 	--command 'cat >> ~/.ssh/authorized_keys'
 
-    gcloud compute ssh --project ${PROJECT} --zone ${ZONE} ${NAME2} \
+    gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME2" \
 	--command 'hostname -I' | \
-	gcloud compute ssh --project ${PROJECT} --zone ${ZONE} ${NAME1} \
+	gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME1" \
 	--command 'cat > ~/.bbr_pair_ip'
 }
 
@@ -111,13 +121,13 @@ wait_for_reboots() {
     PROJECT=$3
     ZONE=$4
 
-until gcloud compute ssh --project $PROJECT --zone $ZONE $NAME1 --command "echo $NAME1 Rebooted!"
+until gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME1" --command "echo $NAME1 Rebooted!"
 do
     echo "Waiting for $NAME1 to reboot..."
     sleep 2
 done;
 
-until gcloud compute ssh --project $PROJECT --zone $ZONE $NAME2 --command "echo $NAME2 Rebooted!"
+until gcloud compute ssh --project "$PROJECT" --zone "$ZONE" "$NAME2" --command "echo $NAME2 Rebooted!"
 do
     echo "Waiting for $NAME2 to reboot..."
     sleep 2
@@ -127,6 +137,7 @@ done;
 # Comment out completed steps
 
 create_project
+source settings.sh
 
 make_vm ${NAME1} ${PROJECT} ${ZONE}
 make_vm ${NAME2} ${PROJECT} ${ZONE}
