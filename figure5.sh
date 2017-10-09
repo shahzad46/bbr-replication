@@ -45,8 +45,6 @@ run () {
 
 if [ "${1-all}" = "all" ]
 then
-    run "iperf" figure5_iperf
-    run "netperf" figure5_netperf
     run "mininet" figure5_mininet
 else
     run $1 figure5_$1
