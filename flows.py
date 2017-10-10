@@ -2,6 +2,7 @@
 
 from mininet.topo import Topo
 from mininet.node import CPULimitedHost
+from mininet.node import OVSController
 from mininet.link import TCLink
 from mininet.net import Mininet
 from mininet.log import lg, info
@@ -145,65 +146,6 @@ def build_topology(emulator):
         )
         h2run(
             "sudo ethtool -K h2-eth0 gso off tso off gro off;"
-        )
-
-    else:
-        def ssh_popen(command, *args, **kwargs):
-            user = os.environ.get('SUDO_USER', os.environ['USER'])
-            full_command = "ssh -o StrictHostKeyChecking=no -i /home/{}/.ssh/id_rsa {}@{} '{} {}'".format(
-                user, user, data['h2']['IP'], 'sudo bash -c',
-                json.dumps(command)
-            )
-            kwargs['shell'] = True
-            return Popen(full_command, *args, **kwargs)
-
-        data = {
-            'type': 'emulator',
-            'h1': {
-                'IP': get_ip_address(args.dest_ip),
-                'popen': Popen,
-            },
-            'h2': {
-                'IP': args.dest_ip,
-                'popen': ssh_popen
-            },
-            'obj': None
-        }
-
-        # set up tc qdiscs on hosts
-        h2run = runner(data['h2']['popen'], noproc=False)
-        h1run = runner(data['h1']['popen'], noproc=False)
-        pipe_filter = (
-            "tc qdisc del dev {iface} root; "
-            "tc qdisc add dev {iface} root handle 1: htb default 10; "
-            "tc class add dev {iface} parent 1: classid 1:10 htb rate {rate}Mbit; "
-            "tc qdisc add dev {iface} parent 1:10 handle 20: netem delay {delay}ms limit {queue}; "
-        )
-        ingress_filter = (
-            "modprobe ifb numifbs=1; "
-            "ip link set dev ifb0 up; "
-            "ifconfig ifb0 txqueuelen 1000; "
-            "tc qdisc del dev {iface} ingress; "
-            "tc qdisc add dev {iface} handle ffff: ingress; "
-            "tc filter add dev {iface} parent ffff: protocol all u32 match u32 0 0 action"
-            " mirred egress redirect dev ifb0; "
-        )
-        pipe_args = {
-            'rate': args.bw_net,
-            'delay': args.delay,
-            'queue': args.maxq
-        }
-        h2run(
-            ingress_filter.format(iface="ens4") +
-            pipe_filter.format(iface="ifb0", **pipe_args) +
-            pipe_filter.format(iface="ens4", **pipe_args) +
-            "sudo ethtool -K ens4 gso off tso off gro off; "
-            "sudo ethtool -K ifb0 gso off tso off gro off; "
-        )
-        h1run(
-            "tc qdisc del dev ens4 root; "
-            "tc qdisc add dev ens4 root fq pacing; "
-            "sudo ethtool -K ens4 gso off tso off gro off; "
         )
 
     data['h1']['runner'] = runner(data['h1']['popen'], noproc=False)
@@ -379,12 +321,12 @@ def display_countdown(nseconds):
         print "%.1fs left..." % (nseconds - delta)
 
 def figure5(net):
-    """ """
+    """test
+    """
     def pinger(name):
         def ping_fn(net, i, port):
             start_ping(net, args.time, "{}_rtt.txt".format(name))
         return ping_fn
-
     if not args.no_capture:
         cap = start_capture("{}/capture_bbr.dmp".format(args.dir))
 
