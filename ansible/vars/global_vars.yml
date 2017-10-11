@@ -1,0 +1,19 @@
+---
+###########################################################################
+# This file contains the global vars used to configured VM and containers #
+###########################################################################
+# Basic packages to be installed
+basic_packages:
+  - "unzip"
+  - "bridge-utils"
+  - "git"
+  - "lxc"
+  - "lxc-dev"
+  - "python-dev"
+  - "python-pip"
+  - "wireshark"
+  - "tshark"
+  - "python-matplotlib"
+  - "python-termcolor"
+  - "tcptrace"
+  - "apparmor-utils"

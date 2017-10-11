@@ -34,7 +34,7 @@ run () {
     fi
 
     echo "running $type experiment..."
-    python flows.py --fig-num 5 --time 8 --bw-net 10 --delay 20 --maxq $maxq --environment $environment --flow-type $flowtype --dir $dir
+    sudo python flows.py --fig-num 5 --time 8 --bw-net 10 --delay 20 --maxq $maxq --environment $environment --flow-type $flowtype --dir $dir
     chmod -R 0777 $dir
     su $SUDO_USER -c "tshark -2 -r $dir/flow_bbr.dmp -R 'tcp.stream eq $flow && tcp.analysis.ack_rtt'  -e frame.time_relative -e tcp.analysis.ack_rtt -Tfields -E separator=, > $dir/bbr_rtt.txt"
     su $SUDO_USER -c "tshark -2 -r $dir/flow_cubic.dmp -R 'tcp.stream eq $flow && tcp.analysis.ack_rtt'  -e frame.time_relative -e tcp.analysis.ack_rtt -Tfields -E separator=, > $dir/cubic_rtt.txt"
@@ -44,8 +44,6 @@ run () {
 
 if [ "${1-all}" = "all" ]
 then
-    run "iperf" figure5_iperf
-    run "netperf" figure5_netperf
     run "mininet" figure5_mininet
 else
     run $1 figure5_$1

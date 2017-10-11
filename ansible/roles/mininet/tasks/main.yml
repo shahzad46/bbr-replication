@@ -1,0 +1,56 @@
+---
+#
+# Clones the Mininet repository and does a full Mininet installation, including Wireshark
+#
+- name: Cloning the mininet repository
+  git: repo=https://github.com/castroflavio/mininet.git dest=../mininet
+  become: true
+
+- name: Installing mininet
+  command: ../mininet/util/install.sh -nfv
+
+- name: Download iperf3
+  get_url:
+    url: http://downloads.es.net/pub/iperf/iperf-3.0.11.tar.gz
+    dest: /tmp/iperf-3.0.11.tar.gz
+
+- name: Unarchive file
+  unarchive:
+    src: /tmp/iperf-3.0.11.tar.gz
+    dest: ./ 
+    remote_src: yes
+
+- command: chdir=./iperf-3.0.11 {{ item }}
+  with_items:
+  - ./configure
+  - /usr/bin/make
+  - sudo make install
+  - sudo ldconfig /usr/local/lib
+
+- name: Download iproute2
+  get_url:
+    url: http://launchpadlibrarian.net/306560390/iproute2_4.9.0-1ubuntu1_amd64.deb
+    dest: /tmp/iproute2_4.9.0-1ubuntu1_amd64.deb
+
+- name: Install a .deb package
+  apt:
+    deb: /tmp/iproute2_4.9.0-1ubuntu1_amd64.deb
+
+- name: Download captcp-master
+  get_url:
+    url:  https://github.com/hgn/captcp/archive/master.zip
+    dest: /tmp/master.zip
+
+- name: Unarchive file
+  unarchive:
+    src: /tmp/master.zip
+    dest: ./
+    remote_src: yes
+
+- command: chdir=./captcp-master {{ item }}
+  become: true
+  with_items:
+  - make install
+
+- command: aa-complain /usr/sbin/tcpdump
+  become: true

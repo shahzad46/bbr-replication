@@ -90,7 +90,7 @@ class BBTopo(Topo):
         host2 = self.addHost('h2')
         switch = self.addSwitch('s0')
         link1 = self.addLink(host1, switch,
-                             bw=args.bw_host)
+                             bw=args.bw_host, use_fq=True )
         link2 = self.addLink(host2, switch, bw=args.bw_net,
                              delay=str(args.delay) + 'ms',
                              max_queue_size=args.maxq)
@@ -258,7 +258,7 @@ def start_flows(net, num_flows, time_btwn_flows, flow_type, cong,
     def start_flow(i):
         if pre_flow_action is not None:
             pre_flow_action(net, i, base_port + i)
-        flow_commands(i, h1, h2, base_port + i, cong[i],
+        flow_commands(cong[i]+str(i), h1, h2, base_port + i, cong[i],
                       args.time - time_btwn_flows * i,
                       args.dir, delay=i*time_btwn_flows)
         flow = {
@@ -321,7 +321,7 @@ def display_countdown(nseconds):
         print "%.1fs left..." % (nseconds - delta)
 
 def figure5(net):
-    """test
+    """
     """
     def pinger(name):
         def ping_fn(net, i, port):
@@ -352,7 +352,8 @@ def figure5(net):
                        "{}/flow_cubic.dmp".format(args.dir))
 
 def figure6(net):
-    """ """
+    """ 
+    """
     # Start packet capturing
     if not args.no_capture:
         cap = start_capture("{}/capture.dmp".format(args.dir))
