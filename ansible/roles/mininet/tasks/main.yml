@@ -8,6 +8,7 @@
 
 - name: Installing mininet
   command: ../mininet/util/install.sh -nfv
+  become: true
 
 - name: Download iperf3
   get_url:
